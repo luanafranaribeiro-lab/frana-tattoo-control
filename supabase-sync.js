@@ -1,87 +1,52 @@
-// Frana Tattoo Control — camada de sincronização Supabase
-// Mantém o localStorage como cache local e sincroniza o objeto franaDB por usuário.
+// Frana Tattoo Control — autenticação + sincronização Supabase
+const FRANA_SUPABASE_URL='https://gjiauoqyabczeagixuyb.supabase.co';
+const FRANA_SUPABASE_KEY='sb_publishable_Wur1qmb01gF90cZoo-oJQg_rnZBcOdv';
 
-const FRANA_SUPABASE_URL = 'https://gjiauoqyabczeagixuyb.supabase.co';
-const FRANA_SUPABASE_KEY = 'sb_publishable_Wur1qmb01gF90cZoo-oJQg_rnZBcOdv';
-
-window.franaCloud = {
-  client: null,
-  user: null,
-  ready: false,
-
-  async init() {
-    if (!window.supabase) {
-      console.error('Supabase SDK não carregou.');
-      return;
-    }
-    this.client = window.supabase.createClient(FRANA_SUPABASE_URL, FRANA_SUPABASE_KEY);
-    const { data } = await this.client.auth.getSession();
-    this.user = data.session?.user || null;
-    this.ready = true;
-
-    if (this.user) await this.pull();
-    this.client.auth.onAuthStateChange(async (_event, session) => {
-      this.user = session?.user || null;
-      if (this.user) await this.pull();
-    });
-  },
-
-  async signIn(email, password) {
-    const { data, error } = await this.client.auth.signInWithPassword({ email, password });
-    if (error) throw error;
-    this.user = data.user;
-    await this.pull();
-    return data.user;
-  },
-
-  async signOut() {
-    await this.client.auth.signOut();
-    this.user = null;
-  },
-
-  async pull() {
-    if (!this.user) return false;
-    const { data, error } = await this.client
-      .from('app_state')
-      .select('data, updated_at')
-      .eq('user_id', this.user.id)
-      .maybeSingle();
-    if (error) {
-      console.error('Erro ao carregar dados do Supabase:', error);
-      return false;
-    }
-    if (data?.data) {
-      db = data.data;
-      db.moves = db.moves || [];
-      db.tattoos = db.tattoos || [];
-      localStorage.setItem('franaDB', JSON.stringify(db));
-      if (typeof render === 'function') render();
-      return true;
-    }
-    await this.push();
-    return true;
-  },
-
-  async push() {
-    if (!this.user) return false;
-    const { error } = await this.client.from('app_state').upsert({
-      user_id: this.user.id,
-      data: db,
-      updated_at: new Date().toISOString()
-    }, { onConflict: 'user_id' });
-    if (error) {
-      console.error('Erro ao salvar dados no Supabase:', error);
-      return false;
-    }
-    return true;
-  }
+window.franaCloud={client:null,user:null,ready:false,
+ async init(){
+  if(!window.supabase)return console.error('Supabase SDK não carregou.');
+  this.client=window.supabase.createClient(FRANA_SUPABASE_URL,FRANA_SUPABASE_KEY);
+  const {data}=await this.client.auth.getSession();
+  this.user=data.session?.user||null;this.ready=true;
+  if(this.user){await this.pull();this.showApp()}else this.showLogin();
+  this.client.auth.onAuthStateChange(async(event,session)=>{
+   this.user=session?.user||null;
+   if(event==='SIGNED_IN'&&this.user){await this.pull();this.showApp()}
+   if(event==='SIGNED_OUT')this.showLogin();
+  });
+ },
+ showLogin(message=''){
+  const app=document.getElementById('app'),nav=document.getElementById('nav'),modal=document.getElementById('modal');
+  if(nav)nav.style.display='none';if(modal)modal.classList.add('hidden');
+  app.innerHTML=`<div style="min-height:78vh;display:flex;align-items:center;justify-content:center;padding:24px"><div class="card" style="width:min(100%,420px);padding:28px"><div class="brand" style="text-align:center;margin-bottom:6px">Frana Tattoo Control</div><div class="sub" style="text-align:center;margin-bottom:24px">Entre para acessar seus dados sincronizados</div><label>E-mail</label><input id="cloudEmail" type="email" autocomplete="email" placeholder="seu@email.com"><label>Senha</label><input id="cloudPassword" type="password" autocomplete="current-password" placeholder="Sua senha"><div id="cloudMsg" class="tiny red" style="min-height:24px;margin-top:8px">${message}</div><button id="cloudLogin" class="btn full">Entrar</button></div></div>`;
+  document.getElementById('cloudLogin').onclick=()=>this.loginFromScreen();
+  document.getElementById('cloudPassword').onkeydown=e=>{if(e.key==='Enter')this.loginFromScreen()};
+ },
+ async loginFromScreen(){
+  const email=document.getElementById('cloudEmail').value.trim(),password=document.getElementById('cloudPassword').value,msg=document.getElementById('cloudMsg'),btn=document.getElementById('cloudLogin');
+  if(!email||!password){msg.textContent='Preencha e-mail e senha.';return}
+  btn.disabled=true;btn.textContent='Entrando...';msg.textContent='';
+  const {data,error}=await this.client.auth.signInWithPassword({email,password});
+  if(error){btn.disabled=false;btn.textContent='Entrar';msg.textContent='E-mail ou senha incorretos.';return}
+  this.user=data.user;
+ },
+ showApp(){const nav=document.getElementById('nav');if(nav)nav.style.display='';if(typeof render==='function')render()},
+ async pull(){
+  if(!this.user)return false;
+  const {data,error}=await this.client.from('app_state').select('data,updated_at').eq('user_id',this.user.id).maybeSingle();
+  if(error){console.error('Erro ao carregar dados:',error);return false}
+  if(data?.data){db=data.data;db.moves=db.moves||[];db.tattoos=db.tattoos||[];localStorage.setItem('franaDB',JSON.stringify(db));return true}
+  // Primeiro login neste banco: migra automaticamente os dados locais existentes.
+  return await this.push();
+ },
+ async push(){
+  if(!this.user)return false;
+  const {error}=await this.client.from('app_state').upsert({user_id:this.user.id,data:db,updated_at:new Date().toISOString()},{onConflict:'user_id'});
+  if(error){console.error('Erro ao salvar dados:',error);return false}return true
+ },
+ async signOut(){await this.client.auth.signOut()}
 };
 
-// Intercepta o save existente sem quebrar o funcionamento offline.
-const franaLocalSave = save;
-save = function () {
-  franaLocalSave();
-  if (window.franaCloud?.user) window.franaCloud.push();
-};
-
-window.addEventListener('DOMContentLoaded', () => window.franaCloud.init());
+const franaLocalSave=save;
+save=function(){franaLocalSave();if(window.franaCloud?.user)window.franaCloud.push()};
+window.addEventListener('DOMContentLoaded',()=>window.franaCloud.init());
