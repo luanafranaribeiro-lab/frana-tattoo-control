@@ -1,4 +1,4 @@
-// Kit Flash Evento: configuração do botão dentro de Estoque.
+// Kit Flash Evento: configuração compacta do botão dentro de Estoque.
 const FLASH_KIT_DEFAULTS=[
  {key:'gloves',label:'Luvas',qty:2,unit:'un',scope:'flash'},
  {key:'soap',label:'Sabonete neutro',qty:0,unit:'ml',scope:'flash'},
@@ -16,21 +16,7 @@ const FLASH_KIT_DEFAULTS=[
  {key:'bandage',label:'Bandagem',qty:0,unit:'m',scope:'flash'},
  {key:'mask',label:'Máscara',qty:1,unit:'un',scope:'event'}
 ];
-function ensureFlashKit(){
- let k=db.kits[0];
- if(!k){k={id:uid(),name:'Kit Flash Evento',materials:[]};db.kits.push(k)}
- if(!Array.isArray(k.defaults)||!k.defaults.length)k.defaults=FLASH_KIT_DEFAULTS.map(x=>({...x}));
- return k;
-}
-function flashDefaultRows(k){return k.defaults.map((x,i)=>`<div class="card"><label>Material</label><input id="fkl${i}" value="${esc(x.label)}"><div class="grid"><div><label>Quantidade</label><input id="fkq${i}" type="number" step=".001" min="0" value="${x.qty}"></div><div><label>Unidade</label><select id="fku${i}">${unitOptions(x.unit||'un')}</select></div></div><label>Consumo</label><select id="fks${i}"><option value="flash" ${x.scope!=='event'?'selected':''}>Por flash</option><option value="event" ${x.scope==='event'?'selected':''}>Por evento</option></select><button class="btn light full" type="button" onclick="removeFlashDefault(${i})">Remover</button></div>`).join('')}
-function kitsView(){
- let k=ensureFlashKit();
- form('Kit Flash Evento',`<div class="tiny">Materiais recorrentes do evento. Quantidade, unidade e consumo podem ser editados. Cartucho e tinta continuam variáveis em cada flash.</div><label>Nome do kit</label><input id="kn" value="${esc(k.name||'Kit Flash Evento')}"><h2>Itens do kit</h2><div id="flashDefaults">${flashDefaultRows(k)}</div><button class="btn light full" id="flashDefaultAdd">+ Adicionar tópico</button><h2>Materiais vinculados ao estoque</h2>${kitItemRows(k)}<button class="btn light full" id="kitAdd">+ Adicionar material do estoque</button><div class="card"><b>Detalhe branco</b><div class="tiny">No Flash Rápida, ao marcar “Detalhe branco”: acrescentar 1 batoque P + tinta branca + 1 copinho pequeno de café com água. Usar o mesmo cartucho; não acrescentar outro.</div></div>`,()=>{
-   k.name=$('#kn').value.trim()||'Kit Flash Evento';
-   k.defaults.forEach((x,i)=>{x.label=$(`#fkl${i}`).value.trim()||x.label;x.qty=Math.max(0,+$(`#fkq${i}`).value||0);x.unit=$(`#fku${i}`).value;x.scope=$(`#fks${i}`).value});
-   save();closeM();render();
- },'Salvar kit');
- $('#kitAdd').onclick=()=>kitAddPicker(k);
- $('#flashDefaultAdd').onclick=()=>{k.defaults.push({key:'custom_'+uid(),label:'Novo material',qty:1,unit:'un',scope:'flash'});save();kitsView()};
-}
+function ensureFlashKit(){let k=db.kits[0];if(!k){k={id:uid(),name:'Kit Flash Evento',materials:[]};db.kits.push(k)}if(!Array.isArray(k.defaults)||!k.defaults.length)k.defaults=FLASH_KIT_DEFAULTS.map(x=>({...x}));return k}
+function flashDefaultRows(k){return k.defaults.map((x,i)=>`<div class="item row" style="gap:8px"><input id="fkl${i}" value="${esc(x.label)}" aria-label="Material" style="margin:3px 0;min-width:0;flex:1"><div class="row" style="gap:4px;flex:0 0 auto"><input id="fkq${i}" type="number" step=".001" min="0" value="${x.qty}" aria-label="Quantidade" style="width:72px;margin:3px 0"><span class="tiny" style="min-width:28px">${esc(x.unit||'un')}</span><button class="btn light" type="button" onclick="removeFlashDefault(${i})" style="padding:7px 9px;min-width:auto">✕</button></div></div>`).join('')}
+function kitsView(){let k=ensureFlashKit();form('Kit Flash Evento',`<div class="tiny">Material e quantidade por flash. Máscara = 1 por evento.</div><div id="flashDefaults">${flashDefaultRows(k)}</div><button class="btn light full" id="flashDefaultAdd">+ Adicionar material</button><div class="item row"><span>Detalhe branco</span><b>1 batoque P + tinta branca + 1 copinho com água</b></div><div class="tiny">Mesmo cartucho; não acrescenta outro.</div>`,()=>{k.defaults.forEach((x,i)=>{x.label=$(`#fkl${i}`).value.trim()||x.label;x.qty=Math.max(0,+$(`#fkq${i}`).value||0)});save();closeM();render()},'Salvar kit');$('#flashDefaultAdd').onclick=()=>{k.defaults.push({key:'custom_'+uid(),label:'Novo material',qty:1,unit:'un',scope:'flash'});save();kitsView()}}
 function removeFlashDefault(i){let k=ensureFlashKit();k.defaults.splice(i,1);save();kitsView()}
