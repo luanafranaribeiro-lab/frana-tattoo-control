@@ -67,6 +67,7 @@ function saveStockSheet(id){
   if(bought<=0){alert('Informe a quantidade comprada.');return}if(current<0){alert('Informe uma quantidade atual válida.');return}
   Object.assign(s,{name:meta.name,cat:meta.cat,type:meta.type,customType:meta.custom,brand:meta.brand,model:meta.model,num:meta.num,config:meta.config,unit,purchasedQty:bought,qty:current,originalTotal:total,cost:total/bought,min});
   if(type==='Vitalderm'){s.widthCm=+$('#svw').value;s.rollLengthM=+$('#svl').value}
+  if(typeof mimoRefreshCost==='function')mimoRefreshCost();
   save();closeM();render();
 }
 // Compras novas passam a guardar também a quantidade total comprada e o custo original acumulado do item.
@@ -79,5 +80,5 @@ savePurchase=function(){
   let old=db.stock.find(x=>x.name.toLowerCase()===name.toLowerCase()&&x.unit===unit);
   if(old){let bought=old.purchasedQty!=null?+old.purchasedQty:(+old.qty||0),orig=old.originalTotal!=null?+old.originalTotal:bought*(+old.cost||0);old.purchasedQty=bought+qty;old.originalTotal=orig+total;old.cost=old.originalTotal/old.purchasedQty;old.qty=(+old.qty||0)+qty;old.min=min||old.min;old.cat=cat;old.type=selected;old.brand=brand;old.model=model;old.num=num;old.config=config}
   else{old={id:uid(),name,cat,qty,unit,cost:total/qty,min,type:selected,brand,model,num,config,purchasedQty:qty,originalTotal:total};if(selected==='Vitalderm'){old.widthCm=+$('#pvw').value;old.rollLengthM=+$('#pvl').value}db.stock.push(old)}
-  db.purchases.push({id:uid(),stockId:old.id,name,qty,total,unit,type:selected,date:new Date().toISOString().slice(0,10)});save();closeM();page='stock';render();
+  db.purchases.push({id:uid(),stockId:old.id,name,qty,total,unit,type:selected,date:new Date().toISOString().slice(0,10)});if(typeof mimoRefreshCost==='function')mimoRefreshCost();save();closeM();page='stock';render();
 };
