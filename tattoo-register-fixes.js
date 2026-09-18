@@ -1,7 +1,7 @@
 // Registro de tattoo: materiais padrão automáticos + variáveis selecionáveis.
 const TR_INK_ML=.5;
 function trType(s){return typeof stockTypeOf==='function'?stockTypeOf(s):(s.type||s.customType||s.cat||'')}
-function trFind(re){return db.stock.find(s=>re.test(`${trType(s)} ${s.customType||''} ${s.cat||''} ${s.name||''} ${s.model||''}`))}
+function trFind(re){let matches=db.stock.filter(s=>re.test(`${trType(s)} ${s.customType||''} ${s.cat||''} ${s.name||''} ${s.model||''}`));return matches.find(s=>(+s.qty||0)>0)||matches[0]}
 function trAdd(out,s,qty){if(s&&qty>0)out.push({stockId:s.id,qty})}
 function trStandardMaterials(){
  let out=[];
