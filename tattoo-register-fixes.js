@@ -5,7 +5,7 @@ function trFind(re){let matches=db.stock.filter(s=>re.test(`${trType(s)} ${s.cus
 function trAdd(out,s,qty){if(s&&qty>0)out.push({stockId:s.id,qty})}
 function trMimoParts(){return{card:trFind(/cart[aã]o.*p[oó]s/i),pot:trFind(/potinho/i),ointment:trFind(/pomada/i)}}
 function trMimoMaterials(qty=1){let p=trMimoParts(),out=[];trAdd(out,p.card,qty);trAdd(out,p.pot,qty);/* Pomada cadastrada em unidades: custo/consumo do mimo = 3g proporcional, sem baixar 3 tubos inteiros. */return out}
-function trIsMimoPart(s){return /cart[aã]o.*p[oó]s|potinho|pomada/i.test(`${trType(s)} ${s.name||''}`)}
+function trIsMimoPart(s){return !!s?.isMimoReady}
 function trStandardMaterials(){
  let out=[];
  trAdd(out,trFind(/papel.*vegetal/i),1);
@@ -17,7 +17,7 @@ function trStandardMaterials(){
  trAdd(out,trFind(/papel(?!.*toalha)(?!.*vegetal)/i),3);
  trAdd(out,trFind(/palito|mexedor.*caf[eé]/i),1);
  trAdd(out,trFind(/vaselina/i),3);
- trMimoMaterials(1).forEach(m=>out.push(m));
+ mimoMaterial(1).forEach(m=>out.push(m));
  return out;
 }
 function trCartOptions(){return db.stock.filter(s=>trType(s)==='Cartucho'&&(+s.qty||0)>0).map(s=>`<option value="${s.id}">${esc(s.name)} · ${fmt(s.qty)} un</option>`).join('')}
