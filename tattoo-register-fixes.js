@@ -3,6 +3,9 @@ const TR_INK_ML=.5;
 function trType(s){return typeof stockTypeOf==='function'?stockTypeOf(s):(s.type||s.customType||s.cat||'')}
 function trFind(re){let matches=db.stock.filter(s=>re.test(`${trType(s)} ${s.customType||''} ${s.cat||''} ${s.name||''} ${s.model||''}`));return matches.find(s=>(+s.qty||0)>0)||matches[0]}
 function trAdd(out,s,qty){if(s&&qty>0)out.push({stockId:s.id,qty})}
+function trMimoParts(){return{card:trFind(/cart[aã]o.*p[oó]s/i),pot:trFind(/potinho/i),ointment:trFind(/pomada/i)}}
+function trMimoMaterials(qty=1){let p=trMimoParts(),out=[];trAdd(out,p.card,qty);trAdd(out,p.pot,qty);/* Pomada cadastrada em unidades: custo/consumo do mimo = 3g proporcional, sem baixar 3 tubos inteiros. */return out}
+function trIsMimoPart(s){return /cart[aã]o.*p[oó]s|potinho|pomada/i.test(`${trType(s)} ${s.name||''}`)}
 function trStandardMaterials(){
  let out=[];
  trAdd(out,trFind(/papel.*vegetal/i),1);
@@ -14,9 +17,7 @@ function trStandardMaterials(){
  trAdd(out,trFind(/papel(?!.*toalha)(?!.*vegetal)/i),3);
  trAdd(out,trFind(/palito|mexedor.*caf[eé]/i),1);
  trAdd(out,trFind(/vaselina/i),3);
- trAdd(out,trFind(/cart[aã]o.*p[oó]s/i),1);
- trAdd(out,trFind(/potinho/i),1);
- trAdd(out,trFind(/pomada/i),3);
+ trMimoMaterials(1).forEach(m=>out.push(m));
  return out;
 }
 function trCartOptions(){return db.stock.filter(s=>trType(s)==='Cartucho'&&(+s.qty||0)>0).map(s=>`<option value="${s.id}">${esc(s.name)} · ${fmt(s.qty)} un</option>`).join('')}
@@ -34,7 +35,7 @@ function newTattoo(edit=null,appointment=null,eventId=null){
  $('#trAddCart').onclick=()=>{$('#trCarts').insertAdjacentHTML('beforeend',trCartRow());trBind()};
  $('#trAddInk').onclick=()=>{$('#trInks').insertAdjacentHTML('beforeend',trInkRow());trBind()};$('#trEditStd').onclick=trStandardEditor;trBind();
 }
-function trLegacyEdit(edit,appointment,eventId){form('Editar tattoo',`<label>Cliente / identificação</label><input id="tc" value="${esc(edit.client||edit.name||'')}"><div class="grid"><div><label>Valor total</label><input id="tp" type="number" step=".01" value="${edit.price||0}"></div><div><label>Total recebido</label><input id="tr" type="number" step=".01" value="${edit.received??edit.price??0}"></div></div><label>Materiais usados</label>${materialRows(edit.materials||[])}`,()=>saveTattoo(edit,appointment,eventId),'Salvar alterações')}
+function trLegacyEdit(edit,appointment,eventId){let mats=edit.materials||[],mimo=mats.some(m=>{let s=db.stock.find(x=>String(x.id)===String(m.stockId));return s&&trIsMimoPart(s)});let visible=mats.filter(m=>{let s=db.stock.find(x=>String(x.id)===String(m.stockId));return !s||!trIsMimoPart(s)});form('Editar tattoo',`<label>Cliente / identificação</label><input id="tc" value="${esc(edit.client||edit.name||'')}"><div class="grid"><div><label>Valor total</label><input id="tp" type="number" step=".01" value="${edit.price||0}"></div><div><label>Total recebido</label><input id="tr" type="number" step=".01" value="${edit.received??edit.price??0}"></div></div><label>Materiais usados</label>${mimo?'<div class="card row"><b>Mimo</b><b>1 un</b></div>':''}${materialRows(visible)}`,()=>saveTattoo(edit,appointment,eventId),'Salvar alterações')}
 function trSaveNew(appointment,eventId){
  let mats=trConfiguredStandardMaterials(),caps=trFind(/batoque.*\bP\b/i),vital=trFind(/vitalderm/i);
  document.querySelectorAll('.tr-cart-row').forEach(r=>{let id=r.querySelector('.tr-cart')?.value,q=+r.querySelector('.tr-cart-q')?.value||0;if(id&&q)trAdd(mats,db.stock.find(s=>String(s.id)===id),q)});
